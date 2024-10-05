@@ -1,0 +1,67 @@
+chb sign up reponse ={
+    "user": {
+        "orderCount": 0,
+        "giftCardBalance": 0,
+        "wholesalesOrderCount": 0,
+        "active": true,
+        "totalSpent": 0,
+        "email": "newser@gmail.com",
+        "password": "$2b$10$CLaWNaTEB9ZnwzPZ/Wb3wOPs8ja3DF7YRGX5hzdSFuy7WKL9dbsuS",
+        "orders": [],
+        "notifications": [
+            {
+                "title": "Welcome to CHB luxury.",
+                "text": "Welcome to CHB Luxury, your destination for premium beauty products ✨💄. At CHB, we believe in the power of elegance and sophistication, and our curated collection reflects this ethos 🌟. Our products are crafted with the highest quality ingredients to ensure that you not only look beautiful but feel exquisite 💅. Thank you for choosing CHB Luxury to enhance your beauty regimen. Indulge in the ultimate luxury experience with us 💖.",
+                "link": "",
+                "time": 1728125418487,
+                "read": false,
+                "id": 0.5480835937713977
+            }
+        ],
+        "joined": 1728125418487,
+        "transactions": [],
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "balance": 0,
+        "phone": 72762572,
+        "deposited": 0,
+        "ureadMessages": 1,
+        "referals": 0,
+        "_id": "670119ea61878de5584e776e",
+        "createdAt": "2024-10-05T10:50:18.577Z",
+        "updatedAt": "2024-10-05T10:50:18.577Z",
+        "__v": 0
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzAxMTllYTYxODc4ZGU1NTg0ZTc3NmUiLCJpYXQiOjE3MjgxMjU0MTgsImV4cCI6MTcyODY0MzgxOH0.XQLG77ez7_D3b_RLThXS1V6bl5GXMzBH0b6qjgvb6A8",
+    "success": true
+}
+
+
+login response=
+
+{
+    "user": {
+        "_id": "670119ea61878de5584e776e",
+        "orderCount": 0,
+        "giftCardBalance": 0,
+        "wholesalesOrderCount": 0,
+        "active": true,
+        "totalSpent": 0,
+        "email": "newser@gmail.com",
+        "password": "$2b$10$CLaWNaTEB9ZnwzPZ/Wb3wOPs8ja3DF7YRGX5hzdSFuy7WKL9dbsuS",
+        "orders": [],
+        "joined": 1728125418487,
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "balance": 0,
+        "phone": 72762572,
+        "deposited": 0,
+        "ureadMessages": 1,
+        "referals": 0,
+        "createdAt": "2024-10-05T10:50:18.577Z",
+        "updatedAt": "2024-10-05T10:50:18.577Z",
+        "__v": 0
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzAxMTllYTYxODc4ZGU1NTg0ZTc3NmUiLCJpYXQiOjE3MjgxMjU2MDQsImV4cCI6MTcyODY0NDAwNH0.xNNfap_bIzEC-g9YDduqgALTj_MVJPFfE6Dy4RTgJWM",
+    "success": true
+}
