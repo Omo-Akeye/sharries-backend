@@ -1,6 +1,7 @@
 import Product from "../models/Product.js";
 
 export const createReview = async (req, res) => {
+  
     const { productId } = req.params;
     const { user, comment } = req.body;
     
@@ -19,9 +20,9 @@ export const createReview = async (req, res) => {
       await product.save();
   
       res.status(201).json({ message: 'Review added', product });
-    } catch (error) {
-      console.error("Error in createReview:", error);
-      res.status(500).json({ message: 'Server error' });
+    } catch (err) {
+      console.error(err); 
+      res.status(500).json({ message: 'Server Error', error: err.message });
     }
   };
 
