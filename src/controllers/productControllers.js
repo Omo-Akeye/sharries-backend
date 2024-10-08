@@ -3,18 +3,19 @@
 import Product from "../models/Product.js";
 
 export const createProduct = async (req, res) => {
-  console.log(req.body);
-  const { name, categories, price,description,howToUse,images,isOutOfStock} = req.body;
+  // console.log(req.body);
+  const {name,categories,price,description,howToUse,images,isOutOfStock} = req.body;
+  const parsedPrice = parseFloat(price); 
+  const parsedIsOutOfStock = isOutOfStock === 'false'; 
   try {
     const product = new Product({
       name,
       categories,
-      price,
+      price:parsedPrice,
       description,
       howToUse,
       images: req.body.images,
-      isOutOfStock,
-  
+      isOutOfStock:parsedIsOutOfStock
     });
     
     await product.save();

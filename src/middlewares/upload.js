@@ -26,8 +26,8 @@ const uploadImage = async (req, res, next) => {
           }
 
           images.push(result.secure_url);  // Add uploaded image URL to array
-          if (images.length === 3) {
-            console.log("All images uploaded:", images);
+          if (images.length === 1) {
+            console.log("image uploaded:", images);
             fields.images = images;  // Attach images to form fields
 
             req.body = fields;  // Assign the form fields and images to req.body
