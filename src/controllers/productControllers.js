@@ -67,6 +67,36 @@ export const updateProduct = async (req,res) => {
 
 
 
+export const getProductById = async (req,res) =>{
+  const {productId} = req.params;
+  try {
+    const product = await Product.findById(productId)
+    if (!product) {
+      return res.status(404).json({message:"Product not found"})
+    }
+    return res.status(200).json(product)
+  } catch (error) {
+    console.error("Error in searchProducts:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export const searchProduct = async (req,res) => {
+  const {query} = req.query
+  try {
+    const products = await Product.find({
+      name: { $regex: query, $options: 'i' },
+    })
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error(err); 
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+ 
+}
+
+
 export const getFilteredProducts = async (req, res) => {
   const { filter, page = 1, limit = 10 } = req.query;
 
