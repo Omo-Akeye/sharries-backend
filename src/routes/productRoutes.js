@@ -11,7 +11,7 @@ productRouter.delete('/deleteproduct/:productId',deleteProduct)
 productRouter.put('/updateproduct/:productId',updateProduct)
 productRouter.get('/product/get-filtered-products',getFilteredProducts)
 productRouter.get('/product/:productId',getProductById)
-productRouter.get('/product/search',searchProduct)
+productRouter.get('/product/search/:productname',searchProduct)
 
 
 export default productRouter;

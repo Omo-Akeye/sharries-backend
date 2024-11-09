@@ -3,7 +3,6 @@
 import Product from "../models/Product.js";
 
 export const createProduct = async (req, res) => {
-  // console.log(req.body);
   const {name,categories,price,description,howToUse,images,isOutOfStock} = req.body;
   const parsedPrice = parseFloat(price); 
   const parsedIsOutOfStock = isOutOfStock === 'false'; 
@@ -81,20 +80,46 @@ export const getProductById = async (req,res) =>{
   }
 }
 
-export const searchProduct = async (req,res) => {
-  const {query} = req.query
-  try {
-    const products = await Product.find({
-      name: { $regex: query, $options: 'i' },
-    })
 
-    res.status(200).json(products);
+export const searchProduct = async (req, res) => {
+  try {
+    const { productname } = req.params;
+
+    if (!productname || productname.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product name is required'
+      });
+    }
+
+    const products = await Product.find({
+      name: { 
+        $regex: new RegExp(productname, 'i')
+      }
+    }).select('_id name');
+
+    if (!products.length > 2) {
+      return res.status(404).json({
+        success: false,
+        message: 'No products found matching the search criteria'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      data: products
+    });
+
   } catch (error) {
-    console.error(err); 
-    res.status(500).json({ message: 'Server Error', error: err.message });
+    console.error('Search product error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error searching for products',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
- 
-}
+};
 
 
 export const getFilteredProducts = async (req, res) => {
