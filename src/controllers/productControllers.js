@@ -1,22 +1,17 @@
-
-
 import Product from "../models/Product.js";
-
 export const createProduct = async (req, res) => {
   const {name,categories,price,description,howToUse,images,isOutOfStock} = req.body;
   const parsedPrice = parseFloat(price); 
   const parsedIsOutOfStock = isOutOfStock === 'false'; 
   try {
     const product = new Product({
-      name,
-      categories,
+      name,categories,
       price:parsedPrice,
       description,
       howToUse,
       images: req.body.images,
       isOutOfStock:parsedIsOutOfStock
     });
-    
     await product.save();
       
     res.status(201).json(product);
@@ -84,21 +79,21 @@ export const getProductById = async (req,res) =>{
 export const searchProduct = async (req, res) => {
   try {
     const { productname } = req.params;
-
-    if (!productname || productname.trim().length === 0) {
+    
+    if (!productname || productname.trim().length < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Product name is required'
+        message: 'Please enter at least 3 characters to search'
       });
     }
 
     const products = await Product.find({
-      name: { 
-        $regex: new RegExp(productname, 'i')
+      name: {
+        $regex: new RegExp(productname.trim(), 'i')
       }
-    }).select('_id name');
+    });
 
-    if (!products.length > 2) {
+    if (products.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'No products found matching the search criteria'
@@ -106,11 +101,8 @@ export const searchProduct = async (req, res) => {
     }
 
     return res.status(200).json({
-      success: true,
-      count: products.length,
       data: products
     });
-
   } catch (error) {
     console.error('Search product error:', error);
     return res.status(500).json({
