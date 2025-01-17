@@ -1,4 +1,7 @@
 import Product from "../models/Product.js";
+
+
+
 export const createProduct = async (req, res) => {
   const {name,categories,price,description,howToUse,images,isOutOfStock} = req.body;
   const parsedPrice = parseFloat(price); 

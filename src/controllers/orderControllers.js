@@ -1,48 +1,122 @@
 import crypto from "crypto";
 import Order from "../models/Order.js";
+import validateCartPrices from "./priceControllers.js"
+import User from "../models/User.js";
+
+
+export const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: 'Authentication required' });
+};
 
 const generateRandomString = (length = 5) => {
   return crypto.randomBytes(length).toString("hex");
 };
+
 export const postOrder = async (req, res) => {
-    const { name,email,phoneNumber,additionalNote,shippingFee,shippingAddress,paymentMethod,cartItems}  = req.body;
-         // Validate required fields
-    if ( !name || !email ||!phoneNumber ||!shippingFee ||!shippingAddress ||!paymentMethod || !cartItems ||!Array.isArray(cartItems) ||cartItems.length === 0
-      ) {
-        return res.status(400).json({ error: "All fields except userID are required." });
-      }
+  const {
+    name,
+    email,
+    phoneNumber,
+    additionalNote,
+    shippingFee,
+    shippingAddress,
+    paymentMethod,
+    cartItems
+  } = req.body;
+  console.log('Session:', req.session)
+  console.log('Cookies:', req.cookies)
+  console.log('User in request:', req.user)
+  console.log('Is authenticated:', req.isAuthenticated?.())
+
+  if (!name || !email || !phoneNumber || !shippingFee || !shippingAddress ||
+      !paymentMethod || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+    return res.status(400).json({ error: "All required fields must be provided." });
+  }
+ 
   try {
-    let userID = null;
-    if (req.isAuthenticated && req.isAuthenticated()) {
-      userID = req.user?.id || null;
+    
+    const validation = await validateCartPrices(cartItems);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        error: validation.error,
+        details: {
+          message: validation.error,
+          discrepancies: validation.discrepancies,
+          expectedTotal: validation.orderSubtotal + shippingFee
+        }
+      });
     }
+
+    const orderTotal = validation.orderSubtotal + shippingFee;
+    
+    
+    const userID = req.user?.id || null;
+    
+   
+    if (userID) {
+      await User.findByIdAndUpdate(
+        userID,
+        {
+          $push: {
+            orderHistory: {
+              orderDate: new Date(),
+              cartItems: cartItems.map(item => ({
+                ...item,
+                price: validation.priceMap[item._id],
+                subTotal: validation.priceMap[item._id] * item.quantity
+              })),
+              totalAmount: orderTotal,
+              status: 'Pending'
+            }
+          },
+          $inc: { totalPurchases: 1 }
+        }
+      );
+    }
+
     const orderID = generateRandomString(5);
-    // Create the order
+   
+    
     const newOrder = new Order({
-      userID: userID || null, // Optional
-      name,email,phoneNumber,additionalNote: additionalNote || null,shippingFee,shippingAddress,orderID,paymentMethod,
-      paymentStatus: "checking", 
+      userID, 
+      orderID,
+      name,
+      email,
+      phoneNumber,
+      additionalNote: additionalNote || null,
+      shippingFee,
+      shippingAddress,
+      paymentMethod,
+      paymentStatus: "checking",
       orderStatus: "processing",
-      cartItems,
+      cartItems: cartItems.map(item => ({
+        ...item,
+        price: validation.priceMap[item._id],
+        subTotal: validation.priceMap[item._id] * item.quantity
+      })),
+      orderTotal
     });
+
     await newOrder.save();
 
     res.status(201).json({
       message: "Order created successfully",
       orderID,
-      order: newOrder,
+      order: newOrder
     });
   } catch (error) {
     console.error("Error creating order:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Failed to process order" });
   }
-}
-
+};
 
 export const getOrderByOrderID = async (req, res) => {
     const {orderID} = req.params;
     try {
-      // Find the order by its orderID
+     
       const order = await Order.findOne({ orderID });
   
       if (!order) {
@@ -78,3 +152,32 @@ export const deleteOrder = async (req,res)=>{
     res.status(500).json({ message: 'Server error' });
   }
 }
+
+export const getUserOrderHistory = async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const orderHistory = {
+      totalPurchases: user.totalPurchases,
+      orders: user.orderHistory.sort((a, b) => b.orderDate - a.orderDate) 
+    };
+
+    res.status(200).json(orderHistory);
+  } catch (error) {
+    console.error('Error fetching order history:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+
+
+
+
+

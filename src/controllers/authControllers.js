@@ -1,57 +1,248 @@
-import User from "../models/User.js";
+import passport from 'passport';
+import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
-// import passport from "passport";
-export const register = async (req, res) => {
-  const {name,phoneNumber, email, password } = req.body;
-  if (!email || !password  || !name  || !phoneNumber ) {
-    return res.status(400).json({ error: "Incomplete credentials." });
+
+
+export const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
   }
+  res.status(401).json({ error: 'Authentication required' });
+};
+
+export const register = async (req, res) => {
+  const { name, phoneNumber, email, password } = req.body;
+
+  if (!email || !password || !name || !phoneNumber) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
   try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ error: "User already exists." });
+      return res.status(409).json({ error: 'User already exists' });
     }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({name,phoneNumber, email, password: hashedPassword });
+    const user = new User({
+      name,
+      phoneNumber,
+      email,
+      password: hashedPassword
+    });
+
     await user.save();
-    res.status(201).json({ message: "User registered successfully." });
-  } catch (err) {
-    res.status(500).json({ 
-      error: "Error registering user.",
+    res.status(201).json({ message: 'Registration successful' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Error registering user' });
+  }
+};
+
+export const login = (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.status(401).json({ error: info.message || 'Authentication failed' });
+    }
+    req.logIn(user, (err) => {
+      if (err) {
+        return next(err);
+      }
+      if (req.session) {
+        req.session.cookie.secure = process.env.NODE_ENV === 'production';
+        req.session.cookie.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+        req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      }
+      return res.json({ 
+        message: 'Login successful',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email
+        }
+      });
+    });
+  })(req, res, next);
+};
+
+export const logout = async (req, res) => {
+  try {
+   
+    if (!req.isAuthenticated()) {
+      return res.status(400).json({
+        error: 'No active session',
+        status: 'error'
+      });
+    }
+
+    
+    await new Promise((resolve, reject) => {
+      req.logout((err) => {
+        if (err) reject(err);
+        resolve();
+      });
+    });
+
+    
+    await new Promise((resolve, reject) => {
+      req.session.destroy((err) => {
+        if (err) reject(err);
+        resolve();
+      });
+    });
+
+   
+    res.clearCookie('connect.sid', {
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      httpOnly: true
+    });
+
+    return res.status(200).json({
+      message: 'Logged out successfully',
+      status: 'success'
+    });
+
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({
+      error: 'Error during logout process',
+      status: 'error'
     });
   }
 };
 
-export const login = async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required." });
-  }
+
+
+
+////
+
+export const checkAuth = async (req, res) => {
   try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: "Account does not exist." });
+    // Check if user is authenticated
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        status: 'error'
+      });
     }
 
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ error: "Incorrect email or password." });
+    // Refresh session to prevent timeout
+    if (req.session) {
+      req.session.touch();
     }
-    res.status(200).json({ message: "Logged in successfully." });
+
+    // Extract only necessary user data
+    const { _id, name, email } = req.user;
     
-  } catch (error) {
-    res.status(500).json({ error: "Error logging in." });
-  }
-  }
+    // Return user data without sensitive information
+    return res.status(200).json({
+      status: 'success',
+      user: {
+        id: _id,
+        name,
+        email
+      }
+    });
 
-export const logOut = async (req, res) => {
-  req.logout(err => {
-    if (err) {
-      return res.status(500).json({ error: "Error logging out." });
-    }
-    res.status(200).json({ message: "Logged out successfully." });
-  });
+  } catch (error) {
+    console.error('Auth check error:', error);
+    return res.status(500).json({
+      error: 'Server error during authentication check',
+      status: 'error'
+    });
+  }
 };
+
+// Optional: Middleware to refresh session if it's about to expire
+export const refreshSession = (req, res, next) => {
+  if (req.session && req.session.cookie && req.session.cookie.maxAge) {
+    const minutesLeft = req.session.cookie.maxAge / 1000 / 60;
+    if (minutesLeft < 5) { // Refresh if less than 5 minutes left
+      req.session.touch();
+    }
+  }
+  next();
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import User from "../models/User.js";
+// import bcrypt from 'bcryptjs';
+// import passport from "passport";
+// export const register = async (req, res) => {
+//   const {name,phoneNumber, email, password } = req.body;
+//   if (!email || !password  || !name  || !phoneNumber ) {
+//     return res.status(400).json({ error: "Incomplete credentials." });
+//   }
+//   try {
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(409).json({ error: "User already exists." });
+//     }
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     const user = new User({name,phoneNumber, email, password: hashedPassword });
+//     await user.save();
+//     res.status(201).json({ message: "User registered successfully." });
+//   } catch (error) {
+//     console.error( error);
+//     res.status(500).json({  
+//       error: "Error registering user.",
+//     });
+//   }
+// };
+
+// catch (error) {
+//   console.error("Error in deleteReview:", error);
+//   res.status(500).json({ message: 'Server error' });
+// }
+
+// export const login = async (req, res) => {
+//   const { email, password } = req.body;
+//   if (!email || !password) {
+//     return res.status(400).json({ error: "Email and password are required." });
+//   }
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ error: "Account does not exist." });
+//     }
+
+//     const isPasswordCorrect = await bcrypt.compare(password, user.password);
+//     if (!isPasswordCorrect) {
+//       return res.status(401).json({ error: "Incorrect email or password." });
+//     }
+//     res.status(200).json({ message: "Logged in successfully." });
+    
+//   } catch (error) {
+//     res.status(500).json({ error: "Error logging in." });
+//   }
+//   }
+
+// export const logOut = async (req, res) => {
+//   req.logout(err => {
+//     if (err) {
+//       return res.status(500).json({ error: "Error logging out." });
+//     }
+//     res.status(200).json({ message: "Logged out successfully." });
+//   });
+// };
 
 
 
