@@ -1,5 +1,5 @@
 import express from 'express';
-import {  register,login,logout, isAuthenticated, checkAuth,  } from '../controllers/authControllers.js';
+import {  register,login,logout, isAuthenticated, checkAuth,refreshSession   } from '../controllers/authControllers.js';
 
 
 
@@ -9,6 +9,7 @@ userRouter.post('/register', register);
 userRouter .post('/login', login);
 userRouter .post('/logout', logout,isAuthenticated);
 userRouter.get('/check-auth', isAuthenticated, checkAuth)
+userRouter.use(refreshSession)
 
 
 export default userRouter;

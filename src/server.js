@@ -30,8 +30,8 @@ app.use(session({
 }));
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'your-production-domain.com' 
+  origin: process.env.NODE_ENV === 'production'
+    ? 'https://sharries.vercel.app'  
     : 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

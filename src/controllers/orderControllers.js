@@ -26,10 +26,6 @@ export const postOrder = async (req, res) => {
     paymentMethod,
     cartItems
   } = req.body;
-  console.log('Session:', req.session)
-  console.log('Cookies:', req.cookies)
-  console.log('User in request:', req.user)
-  console.log('Is authenticated:', req.isAuthenticated?.())
 
   if (!name || !email || !phoneNumber || !shippingFee || !shippingAddress ||
       !paymentMethod || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
@@ -51,11 +47,7 @@ export const postOrder = async (req, res) => {
     }
 
     const orderTotal = validation.orderSubtotal + shippingFee;
-    
-    
     const userID = req.user?.id || null;
-    
-   
     if (userID) {
       await User.findByIdAndUpdate(
         userID,
