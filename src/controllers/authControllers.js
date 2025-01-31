@@ -1,26 +1,30 @@
-import passport from 'passport';
-import User from '../models/User.js';
-import bcrypt from 'bcryptjs';
-
+import passport from "passport";
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { authenticateJWT } from "../middlewares/auth.js";
 
 export const isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
+  if (req.user) {
     return next();
   }
-  res.status(401).json({ error: 'Authentication required' });
+  return res.status(401).json({ error: "Authentication required" });
 };
 
 export const register = async (req, res) => {
   const { name, phoneNumber, email, password } = req.body;
 
   if (!email || !password || !name || !phoneNumber) {
-    return res.status(400).json({ error: 'All fields are required' });
+    return res.status(400).json({ error: "All fields are required" });
+  }
+  if (password.length <= 6) {
+    return res.status(400).json({ error: "Password must be more than 6 characters" });
   }
 
   try {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ error: 'User already exists' });
+      return res.status(409).json({ error: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -28,148 +32,134 @@ export const register = async (req, res) => {
       name,
       phoneNumber,
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     await user.save();
-    res.status(201).json({ message: 'Registration successful' });
+    res.status(201).json({ message: "Registration successful" });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Error registering user' });
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Error registering user" });
   }
 };
 
+// User Login
 export const login = (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err) {
-      return next(err);
-    }
-    if (!user) {
-      return res.status(401).json({ error: info.message || 'Authentication failed' });
-    }
-    req.logIn(user, (err) => {
-      if (err) {
-        return next(err);
+  passport.authenticate("local", { session: false }, async (err, user, info) => {
+
+    if (err) return next(err);
+    if (!user) return res.status(401).json({ error: info.message || "Authentication failed" });
+
+/////////////
+    const totalSpent = user.calculateTotalSpent();
+    user.totalSpent = totalSpent;
+    await user.save();
+//////////////
+    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "24h" });
+
+    res.cookie("auth-token", token, {
+      httpOnly: true,
+      secure: true, // Set to true in production
+      sameSite: "Strict",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+    
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        email: user.email
       }
-      if (req.session) {
-        req.session.cookie.secure = process.env.NODE_ENV === 'production';
-        req.session.cookie.sameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
-        req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
-      }
-      return res.json({ 
-        message: 'Login successful',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phoneNumber:user.phoneNumber
-        }
-      });
     });
   })(req, res, next);
 };
 
-export const logout = async (req, res) => {
+
+
+
+
+export const getProfile = async (req, res) => {
   try {
-   
-    if (!req.isAuthenticated()) {
-      return res.status(400).json({
-        error: 'No active session',
-        status: 'error'
-      });
-    }
-
+    const user = await User.findById(req.user.id)
+      .select('email phoneNumber totalPurchases orderHistory totalSpent');
     
-    await new Promise((resolve, reject) => {
-      req.logout((err) => {
-        if (err) reject(err);
-        resolve();
-      });
-    });
-
-    
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) reject(err);
-        resolve();
-      });
-    });
-
-   
-    res.clearCookie('connect.sid', {
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      httpOnly: true
-    });
-
-    return res.status(200).json({
-      message: 'Logged out successfully',
-      status: 'success'
-    });
-
-  } catch (error) {
-    console.error('Logout error:', error);
-    return res.status(500).json({
-      error: 'Error during logout process',
-      status: 'error'
-    });
-  }
-};
-
-
-
-
-////
-
-export const checkAuth = async (req, res) => {
-  try {
-    // Check if user is authenticated
-    if (!req.isAuthenticated() || !req.user) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        status: 'error'
-      });
-    }
-
-    // Refresh session to prevent timeout
-    if (req.session) {
-      req.session.touch();
-    }
-
-    // Extract only necessary user data
-    const { _id, name, email } = req.user;
-    
-    // Return user data without sensitive information
-    return res.status(200).json({
-      status: 'success',
+    res.json({
       user: {
-        id: _id,
-        name,
-        email
+        id: user._id,
+        userName: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        totalPurchases: user.totalPurchases,
+        orderHistory: user.orderHistory,
+        totalSpent: user.totalSpent
       }
     });
-
   } catch (error) {
-    console.error('Auth check error:', error);
-    return res.status(500).json({
-      error: 'Server error during authentication check',
-      status: 'error'
-    });
+    res.status(500).json({ error: "Error fetching profile data" });
   }
 };
 
-// Optional: Middleware to refresh session if it's about to expire
-export const refreshSession = (req, res, next) => {
-  if (req.session && req.session.cookie && req.session.cookie.maxAge) {
-    const minutesLeft = req.session.cookie.maxAge / 1000 / 60;
-    if (minutesLeft < 5) { // Refresh if less than 5 minutes left
-      req.session.touch();
+export const userTotalSpent = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
+
+    const totalSpent = user.calculateTotalSpent();
+    user.totalSpent = totalSpent;
+    await user.save();
+
+    res.json({
+      totalSpent,
+      orderDetails: {
+        totalOrders: user.orderHistory.length,
+        orderID: order.orderID,
+        orders: user.orderHistory.map(order => ({
+          date: order.orderDate,
+          amount: order.totalAmount
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error calculating total spent:', error);
+    res.status(500).json({ error: 'Failed to calculate total spent' });
   }
-  next();
+};
+// User Logout
+export const logout = (req, res) => {
+  res.setHeader(
+    "Set-Cookie",
+    "auth-token=; HttpOnly; Path=/; Secure; SameSite=Strict; Max-Age=0"
+  );
+
+  return res.status(200).json({
+    message: "Logged out successfully",
+    status: "success",
+  });
 };
 
+export const checkAuth = [
+  
+  authenticateJWT,
+  (req, res) => {
+    try {
+      const { _id, name, email } = req.user;
+
+      return res.status(200).json({
+        status: "success",
+        user: { id: _id, name, email },
+      });
+    } catch (error) {
+      console.error("Auth check error:", error);
+      return res.status(500).json({
+        error: "Server error during authentication check",
+        status: "error",
+      });
+    }
+  },
+];
 
 
 

@@ -2,20 +2,25 @@ import crypto from "crypto";
 import Order from "../models/Order.js";
 import validateCartPrices from "./priceControllers.js"
 import User from "../models/User.js";
+import passport from 'passport';
 
-
-export const isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ error: 'Authentication required' });
-};
-
+  export const optionalAuth = (req, res, next) => {
+        passport.authenticate('jwt', { session: false }, (err, user) => {
+      if (err) {
+        req.user = null;
+        return next();
+      }
+      req.user = user || null;
+      next();
+    })(req, res, next);
+  };
+  
 const generateRandomString = (length = 5) => {
   return crypto.randomBytes(length).toString("hex");
 };
 
 export const postOrder = async (req, res) => {
+
   const {
     name,
     email,
@@ -33,7 +38,7 @@ export const postOrder = async (req, res) => {
   }
  
   try {
-    
+    const orderID = generateRandomString(5);
     const validation = await validateCartPrices(cartItems);
     if (!validation.isValid) {
       return res.status(400).json({
@@ -55,6 +60,7 @@ export const postOrder = async (req, res) => {
           $push: {
             orderHistory: {
               orderDate: new Date(),
+              orderID,
               cartItems: cartItems.map(item => ({
                 ...item,
                 price: validation.priceMap[item._id],
@@ -69,7 +75,7 @@ export const postOrder = async (req, res) => {
       );
     }
 
-    const orderID = generateRandomString(5);
+    // const orderID = generateRandomString(5);
    
     
     const newOrder = new Order({
