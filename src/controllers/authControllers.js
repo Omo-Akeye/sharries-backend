@@ -60,7 +60,7 @@ export const login = (req, res, next) => {
     res.cookie("auth-token", token, {
       httpOnly: true,
       secure: true, // Set to true in production
-      sameSite: "Strict",
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -76,18 +76,15 @@ export const login = (req, res, next) => {
 };
 
 
-
-
-
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .select('email phoneNumber totalPurchases orderHistory totalSpent');
+      .select('name email phoneNumber totalPurchases orderHistory totalSpent');
     
     res.json({
       user: {
         id: user._id,
-        userName: user.name,
+        name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
         totalPurchases: user.totalPurchases,
@@ -140,8 +137,51 @@ export const logout = (req, res) => {
   });
 };
 
-export const checkAuth = [
+// export const checkAuth = [
   
+//   authenticateJWT,
+//   (req, res) => {
+//     try {
+//       const { _id, name, email } = req.user;
+
+//       return res.status(200).json({
+//         status: "success",
+//         user: { id: _id, name, email },
+//       });
+//     } catch (error) {
+//       console.error("Auth check error:", error);
+//       return res.status(500).json({
+//         error: "Server error during authentication check",
+//         status: "error",
+//       });
+//     }
+//   },
+// ];
+
+// export const checkAuth = [
+//   authenticateJWT,
+//   (req, res) => {
+//     try {
+//       const { _id, name, email } = req.user;
+      
+//       // Explicitly set CORS headers for credentials
+//       res.header('Access-Control-Allow-Origin', req.headers.origin);
+//       res.header('Access-Control-Allow-Credentials', 'true');
+      
+//       return res.status(200).json({
+//         status: "success",
+//         user: { id: _id, name, email },
+//       });
+//     } catch (error) {
+//       console.error("Auth check error:", error);
+//       return res.status(500).json({
+//         error: "Server error during authentication check",
+//         status: "error",
+//       });
+//     }
+//   }
+// ];
+export const checkAuth = [
   authenticateJWT,
   (req, res) => {
     try {
@@ -158,7 +198,7 @@ export const checkAuth = [
         status: "error",
       });
     }
-  },
+  }
 ];
 
 
