@@ -56,15 +56,16 @@ export const login = (req, res, next) => {
     await user.save();
 //////////////
     const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "24h" });
-
+    
     res.cookie("auth-token", token, {
       httpOnly: true,
       secure: true, // Set to true in production
       sameSite: "none",
+      partitioned: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
     });
-    
+    ///
     res.json({
       message: "Login successful",
       user: {
