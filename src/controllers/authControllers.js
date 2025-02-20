@@ -138,6 +138,10 @@ export const logout = (req, res) => {
   });
 };
 
+// Check if user is authenticated
+const checking = 'check'
+console.log(checking)
+
 // export const checkAuth = [
   
 //   authenticateJWT,
