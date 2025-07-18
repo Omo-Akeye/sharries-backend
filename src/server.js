@@ -33,7 +33,6 @@ app.use(
 
 // Handle CORS preflight requests
 app.options('*', cors());
-
 // Passport Initialization
 configurePassport();
 app.use(passport.initialize());
@@ -44,7 +43,7 @@ app.use('/', userRouter);
 app.use('/', reviewRoute);
 app.use('/', orderRouter);
 
-// Server Setup
+
 const PORT = process.env.PORT || 6010;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

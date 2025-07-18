@@ -4,15 +4,15 @@ import cloudinary from '../config/cloudinary.js';
 const uploadImage = async (req, res, next) => {
   const bb = busboy({ headers: req.headers });
   const images = [];
-  const fields = {};  // To store form fields like name, price, and categories
+  const fields = {};  
 
-  // Handle form fields
+
   bb.on('field', (fieldname, value) => {
     console.log(`Processed field ${fieldname}: ${value}`);
-    fields[fieldname] = value;  // Store form fields
+    fields[fieldname] = value;  
   });
 
-  // Handle file uploads
+
   bb.on('file', async (fieldname, file, filename, encoding, mimetype) => {
     console.log(`Processing file: ${filename}, mimetype: ${mimetype}`);
 
@@ -25,10 +25,10 @@ const uploadImage = async (req, res, next) => {
             return res.status(500).json({ message: 'Image upload failed' });
           }
 
-          images.push(result.secure_url);  // Add uploaded image URL to array
+          images.push(result.secure_url);  
           if (images.length === 1) {
             console.log("image uploaded:", images);
-            fields.images = images;  // Attach images to form fields
+            fields.images = images;  
 
             req.body = fields;  // Assign the form fields and images to req.body
             next();  // Continue to the next middleware

@@ -52,7 +52,8 @@ export const postOrder = async (req, res) => {
     }
 
     const orderTotal = validation.orderSubtotal + shippingFee;
-    const userID = req.user?.id || null;
+    // const userID = req.user?.id || null;
+    const userID = req.user?._id || null; 
     if (userID) {
       await User.findByIdAndUpdate(
         userID,
@@ -157,7 +158,8 @@ export const getUserOrderHistory = async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const user = await User.findById(req.user.id);
+    // const user = await User.findById(req.user.id);
+      const user = await User.findById(req.user._id); 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
