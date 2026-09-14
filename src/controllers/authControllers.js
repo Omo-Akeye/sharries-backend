@@ -17,8 +17,8 @@ export const register = async (req, res) => {
   if (!email || !password || !name || !phoneNumber) {
     return res.status(400).json({ error: "All fields are required" });
   }
-  if (password.length <= 6) {
-    return res.status(400).json({ error: "Password must be more than 6 characters" });
+  if (password.length < 8 || password.length > 128 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return res.status(400).json({ error: "Password must be 8-128 characters and include at least one letter and one number" });
   }
 
   try {
@@ -55,7 +55,11 @@ export const login = (req, res, next) => {
     user.totalSpent = totalSpent;
     await user.save();
 //////////////
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "24h" });
+    const token = jwt.sign(
+      { id: user._id, email: user.email, tokenVersion: user.tokenVersion },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
     
     res.cookie("auth-token", token, {
       httpOnly: true,
@@ -81,8 +85,8 @@ export const login = (req, res, next) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)  // Change from req.user.id
-      .select('name email phoneNumber totalPurchases orderHistory totalSpent');
-    
+      .select('name email phoneNumber role totalPurchases orderHistory totalSpent');
+
     res.json({
       message: "Profile retrieved successfully",
       user: {
@@ -90,6 +94,7 @@ export const getProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        role: user.role,
         totalPurchases: user.totalPurchases,
         orderHistory: user.orderHistory,
         totalSpent: user.totalSpent
@@ -117,8 +122,8 @@ export const userTotalSpent = async (req, res) => {
       totalSpent,
       orderDetails: {
         totalOrders: user.orderHistory.length,
-        orderID: order.orderID,
         orders: user.orderHistory.map(order => ({
+          orderID: order.orderID,
           date: order.orderDate,
           amount: order.totalAmount
         }))
@@ -133,17 +138,22 @@ export const userTotalSpent = async (req, res) => {
 
 
 
-export const logout = (req, res) => {
+export const logout = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
+  } catch (error) {
+    console.error("Logout token invalidation error:", error);
+  }
 
   res.clearCookie("auth-token", {
-    path: "/",             
-    httpOnly: true,        
-    secure: true,           
-    sameSite: "none",       
-    partitioned: true,     
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    partitioned: true,
   });
 
- 
+
   return res.status(200).json({
     message: "Logged out successfully",
     status: "success",
@@ -157,7 +167,7 @@ export const checkAuth = [
   async (req, res) => {
     try {
       const user = await User.findById(req.user._id)
-        .select('name email phoneNumber totalPurchases orderHistory totalSpent');
+        .select('name email phoneNumber role totalPurchases orderHistory totalSpent');
       if (!user) {
         return res.status(401).json({ error: "User not found" });
       }
@@ -168,6 +178,7 @@ export const checkAuth = [
           name: user.name,
           email: user.email,
           phoneNumber: user.phoneNumber,
+          role: user.role,
           totalPurchases: user.totalPurchases,
           orderHistory: user.orderHistory,
           totalSpent: user.totalSpent

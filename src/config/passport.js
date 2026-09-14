@@ -21,7 +21,7 @@ const configurePassport = () => {
   }, async (jwt_payload, done) => {
     try {
       const user = await User.findById(jwt_payload.id);
-      if (user) {
+      if (user && jwt_payload.tokenVersion === user.tokenVersion) {
         return done(null, user);
       }
       return done(null, false);

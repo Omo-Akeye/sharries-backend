@@ -1,9 +1,12 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.js';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
-import { rateLimit, ipKeyGenerator } from 'express-rate-limit'; 
+import { rateLimit } from 'express-rate-limit';
 import configurePassport from './config/passport.js';
 import connectDB from './config/db.js';
 import productRouter from './routes/productRoutes.js';
@@ -17,20 +20,24 @@ connectDB();
 
 const app = express();
 
-app.use(express.json({ limit: '50mb' })); 
-app.use(cookieParser()); 
+app.use(helmet());
+app.use(express.json({ limit: '2mb' }));
+app.use(cookieParser());
 
 
 app.set('trust proxy', 1);
 
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     message: 'Server is alive'
   });
 });
+
+app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const allowedOrigins = ['https://sharries.vercel.app'];
 
@@ -43,29 +50,39 @@ app.use(
   })
 );
 
-app.options('*', cors());
+// CSRF mitigation: the auth cookie is SameSite=None (required for the
+// cross-site frontend), which browsers still attach to state-changing
+// cross-site requests. Reject mutations whose Origin isn't our own frontend
+// instead of relying solely on CORS preflight behavior.
+const verifyOrigin = (req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return next();
+  }
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+  next();
+};
+app.use(verifyOrigin);
+
 configurePassport();
 app.use(passport.initialize());
 
-// Single rate limiter configuration
+// General rate limiter for all routes
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100, 
-  standardHeaders: true, 
-  legacyHeaders: false, 
-  keyGenerator: (req) => {
-    
-    return req.user?.id || ipKeyGenerator(req);
-  },
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: (req, res) => {
     res.status(429).json({
       error: 'Too many requests',
       message: 'Rate limit exceeded. Please try again later.',
-      retryAfter: Math.round(15 * 60) 
+      retryAfter: Math.round(15 * 60)
     });
   },
 });
-
 
 app.use(limiter);
 

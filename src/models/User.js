@@ -5,6 +5,8 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phoneNumber: { type: Number, required: true, unique: true },
   password: { type: String, required: true },
+  role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
+  tokenVersion: { type: Number, default: 0 },
   totalSpent: { type: Number, default: 0 },
   totalPurchases: { type: Number, default: 0 },
   orderHistory: [{
@@ -36,6 +38,14 @@ userSchema.pre('save', function(next) {
     this.totalSpent = this.calculateTotalSpent();
   }
   next();
+});
+
+userSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    delete ret.tokenVersion;
+    return ret;
+  },
 });
 
 const User = mongoose.model('User', userSchema);

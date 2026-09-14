@@ -19,6 +19,9 @@ const generateRandomString = (length = 5) => {
   return crypto.randomBytes(length).toString("hex");
 };
 
+const MAX_CART_ITEMS = 50;
+const MAX_SHIPPING_FEE = 100000;
+
 export const postOrder = async (req, res) => {
 
   const {
@@ -32,11 +35,23 @@ export const postOrder = async (req, res) => {
     cartItems
   } = req.body;
 
-  if (!name || !email || !phoneNumber || !shippingFee || !shippingAddress ||
+  if (!name || !email || !phoneNumber || shippingFee === undefined || !shippingAddress ||
       !paymentMethod || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
     return res.status(400).json({ error: "All required fields must be provided." });
   }
- 
+
+  if (typeof email !== 'string' || typeof name !== 'string' || typeof shippingAddress !== 'string') {
+    return res.status(400).json({ error: "Invalid field types." });
+  }
+
+  if (!Number.isFinite(shippingFee) || shippingFee < 0 || shippingFee > MAX_SHIPPING_FEE) {
+    return res.status(400).json({ error: "Invalid shipping fee." });
+  }
+
+  if (cartItems.length > MAX_CART_ITEMS) {
+    return res.status(400).json({ error: `A single order can contain at most ${MAX_CART_ITEMS} items.` });
+  }
+
   try {
     const orderID = generateRandomString(5);
     const validation = await validateCartPrices(cartItems);
@@ -114,14 +129,19 @@ export const postOrder = async (req, res) => {
 
 export const getOrderByOrderID = async (req, res) => {
     const {orderID} = req.params;
+    const {email} = req.query;
     try {
-     
+
+      if (typeof email !== 'string' || !email.trim()) {
+        return res.status(400).json({ message: "Order email is required" });
+      }
+
       const order = await Order.findOne({ orderID });
-  
-      if (!order) {
+
+      if (!order || order.email.toLowerCase() !== email.trim().toLowerCase()) {
         return res.status(404).json({ message: "Order not found" });
       }
-  
+
       res.status(200).json(order);
     } catch (error) {
       console.error("Error fetching order:", error);
@@ -132,6 +152,7 @@ export const getOrderByOrderID = async (req, res) => {
 
   export const getAllOrders = async (req,res)=>{
     try {
+      console.info(`[AUDIT] ${new Date().toISOString()} user=${req.user._id} viewed all orders`);
       const orders = await Order.find();
       res.status(200).json(orders)
     } catch (error) {
@@ -142,10 +163,11 @@ export const getOrderByOrderID = async (req, res) => {
 export const deleteOrder = async (req,res)=>{
   const {orderID} = req.params;
   try {
-    const order = await Order.findByIdAndDelete(orderID)
-    if (!orderID) {
-      res.status(404).json({ error: "Order ID does not exist" })
+    const order = await Order.findOneAndDelete({ orderID });
+    if (!order) {
+      return res.status(404).json({ error: "Order ID does not exist" });
     }
+    console.info(`[AUDIT] ${new Date().toISOString()} user=${req.user._id} deleted order=${orderID}`);
     res.status(200).json({message:"order deleted"})
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -154,12 +176,7 @@ export const deleteOrder = async (req,res)=>{
 
 export const getUserOrderHistory = async (req, res) => {
   try {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    // const user = await User.findById(req.user.id);
-      const user = await User.findById(req.user._id); 
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
