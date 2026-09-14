@@ -51,25 +51,19 @@ orderRouter.post('/postorder',optionalAuth,postOrder)
  * @swagger
  * /order/{orderID}:
  *   get:
- *     summary: Look up an order by its ID and the email it was placed under
+ *     summary: Look up an order by its ID
  *     tags: [Orders]
  *     parameters:
  *       - in: path
  *         name: orderID
  *         required: true
  *         schema: { type: string }
- *       - in: query
- *         name: email
- *         required: true
- *         schema: { type: string, format: email }
- *         description: Must match the email the order was placed with
  *     responses:
  *       200:
  *         description: Order found
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Order' }
- *       400: { description: Order email is required }
  *       404: { $ref: '#/components/responses/NotFound' }
  *   delete:
  *     summary: Delete an order (admin only)

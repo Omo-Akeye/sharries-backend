@@ -129,16 +129,10 @@ export const postOrder = async (req, res) => {
 
 export const getOrderByOrderID = async (req, res) => {
     const {orderID} = req.params;
-    const {email} = req.query;
     try {
-
-      if (typeof email !== 'string' || !email.trim()) {
-        return res.status(400).json({ message: "Order email is required" });
-      }
-
       const order = await Order.findOne({ orderID });
 
-      if (!order || order.email.toLowerCase() !== email.trim().toLowerCase()) {
+      if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
 
