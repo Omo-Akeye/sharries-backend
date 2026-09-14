@@ -1,26 +1,29 @@
 import Product from "../models/Product.js";
+import { escapeHtml } from "../utils/sanitize.js";
 
 
 
 export const createProduct = async (req, res) => {
   const {name,categories,price,description,howToUse,images,isOutOfStock} = req.body;
-  const parsedPrice = parseFloat(price); 
-  const parsedIsOutOfStock = isOutOfStock === 'false'; 
+  const parsedPrice = parseFloat(price);
+  const parsedIsOutOfStock = isOutOfStock === 'false';
   try {
     const product = new Product({
-      name,categories,
+      name: escapeHtml(name),
+      categories,
       price:parsedPrice,
-      description,
-      howToUse,
+      description: escapeHtml(description),
+      howToUse: escapeHtml(howToUse),
       images: req.body.images,
       isOutOfStock:parsedIsOutOfStock
     });
     await product.save();
-      
+
+    console.info(`[AUDIT] ${new Date().toISOString()} user=${req.user._id} created product=${product._id}`);
     res.status(201).json(product);
   } catch (err) {
-    console.error(err); 
-    res.status(500).json({ message: 'Server Error', error: err.message });
+    console.error(err);
+    res.status(500).json({ message: 'Server Error' });
   }
 };
 
@@ -37,12 +40,13 @@ export const deleteProduct = async(req,res)=> {
    const {productId} = req.params
   try {
     const product = await Product.findByIdAndDelete(productId)
-    if (!productId) {
-      return res.status(400).json({message:"Product not found"})
+    if (!product) {
+      return res.status(404).json({message:"Product not found"})
     }
+    console.info(`[AUDIT] ${new Date().toISOString()} user=${req.user._id} deleted product=${productId}`);
     res.status(200).json({message:"product deleted"})
   } catch (error) {
-    console.error("Error in deleteReview:", error);
+    console.error("Error in deleteProduct:", error);
     res.status(500).json({ message: 'Server error' });
   }
 }
@@ -50,14 +54,24 @@ export const deleteProduct = async(req,res)=> {
 
 export const updateProduct = async (req,res) => {
   const {productId} = req.params;
+  const {name,categories,price,description,howToUse,isOutOfStock} = req.body;
   try {
-    const product = await Product.findByIdAndUpdate(productId)
-    if(!productId) {
+    const updates = {};
+    if (name !== undefined) updates.name = escapeHtml(name);
+    if (categories !== undefined) updates.categories = categories;
+    if (price !== undefined) updates.price = parseFloat(price);
+    if (description !== undefined) updates.description = escapeHtml(description);
+    if (howToUse !== undefined) updates.howToUse = escapeHtml(howToUse);
+    if (isOutOfStock !== undefined) updates.isOutOfStock = isOutOfStock === true || isOutOfStock === 'true';
+
+    const product = await Product.findByIdAndUpdate(productId, updates, { new: true, runValidators: true });
+    if (!product) {
       return res.status(404).json({message:"Product not found"})
     }
-    res.status(200).json({message:"Product updated"})
+    console.info(`[AUDIT] ${new Date().toISOString()} user=${req.user._id} updated product=${productId}`);
+    res.status(200).json({message:"Product updated", product})
   } catch (error) {
-    console.error("Error in deleteReview:", error);
+    console.error("Error in updateProduct:", error);
     res.status(500).json({ message: 'Server error' });
   }
 }
@@ -90,9 +104,10 @@ export const searchProduct = async (req, res) => {
       });
     }
 
+    const escapedName = productname.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const products = await Product.find({
       name: {
-        $regex: new RegExp(productname.trim(), 'i')
+        $regex: new RegExp(escapedName, 'i')
       }
     });
 
